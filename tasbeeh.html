@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Tasbeeh Counter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.js"></script>
+    <style>
+        :root {
+            --primary: #1E293B;
+            --secondary: #10B981;
+            --accent: #064E3B;
+            --light: #F8FAFC;
+            --dark: #0F172A;
+        }
+        
+        body {
+            background-color: var(--primary);
+            color: var(--light);
+            font-family: 'Inter', sans-serif;
+        }
+        
+        /* Custom Glass Card Effect */
+        .glass-card {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* 3D Bead Styling */
+        .beads-container {
+            position: relative;
+            width: 100%;
+            height: 280px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1000px;
+            overflow: hidden;
+        }
+        
+        .thread {
+            position: absolute;
+            width: 2px;
+            height: 100%;
+            background: linear-gradient(to bottom, transparent, var(--secondary), transparent);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+            z-index: 0;
+        }
+        
+        .beads-wrapper {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            z-index: 1;
+            cursor: grab;
+        }
+        
+        .beads-wrapper:active {
+            cursor: grabbing;
+        }
+        
+        .bead {
+            position: absolute;
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            transform-style: preserve-3d;
+            transition: transform 0.15s ease-out;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 600;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            user-select: none;
+        }
+        
+        .bead.active {
+            z-index: 2;
+        }
+        
+        .bead.counted {
+            filter: brightness(60%);
+        }
+        
+        .bead-inner {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            transform-style: preserve-3d;
+            background: radial-gradient(circle at 30% 30%, var(--secondary), var(--accent));
+            box-shadow: 
+                inset 2px 2px 4px rgba(255, 255, 255, 0.2),
+                inset -2px -2px 4px rgba(0, 0, 0, 0.4),
+                0 5px 15px rgba(0, 0, 0, 0.4);
+        }
+        
+        .bead-shine {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.4);
+            top: 10px;
+            left: 10px;
+            filter: blur(1px);
+        }
+        
+        /* Custom Button Styling */
+        .custom-btn {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            transform: translateY(0);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .custom-btn:after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .custom-btn:hover:after {
+            left: 100%;
+        }
+        
+        .custom-btn:active {
+            transform: translateY(2px);
+        }
+        
+        /* Custom Dropdown */
+        .custom-select {
+            position: relative;
+            width: 100%;
+        }
+        
+        .custom-select-header {
+            padding: 10px 14px;
+            border-radius: 10px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .custom-select-options {
+            position: absolute;
+            top: calc(100% + 5px);
+            left: 0;
+            width: 100%;
+            background: rgba(15, 23, 42, 0.9);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            z-index: 10;
+            max-height: 0;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .custom-select.open .custom-select-options {
+            max-height: 300px;
+            opacity: 1;
+        }
+        
+        .custom-select-option {
+            padding: 10px 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .custom-select-option:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Progress Bar */
+        .progress-bar-bg {
+            height: 8px;
+            border-radius: 4px;
+            background-color: rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(90deg, var(--secondary), var(--accent));
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+            transition: width 0.3s ease-out;
+        }
+        
+        /* Pulse Animation for Counter */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .pulse-animation {
+            animation: pulse 0.5s ease;
+        }
+    </style>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/inter-ui/3.19.3/inter.min.css" rel="stylesheet">
+</head>
+<body class="min-h-screen font-sans flex flex-col items-center justify-center p-6">
+    <!-- Title Section -->
+    <div class="glass-card p-5 mb-6 text-center w-full max-w-md">
+        <h1 class="text-3xl font-bold text-green-400">Digital Tasbeeh</h1>
+        <p class="text-gray-400 text-sm mt-1">Modern 3D bead counter</p>
+    </div>
+    
+    <div class="w-full max-w-md space-y-5">
+        <!-- Counter Display Section -->
+        <div class="glass-card">
+            <div class="p-6 bg-gradient-to-r from-green-900 to-green-800 rounded-t-xl">
+                <div class="flex justify-between items-center">
+                    <div class="flex flex-col">
+                        <h2 class="text-xl font-medium text-green-100">Count</h2>
+                        <div id="dhikrDisplay" class="text-xs text-green-300 opacity-80 mt-1">SubhanAllah</div>
+                    </div>
+                    <div id="counter" class="text-6xl font-bold text-white">0</div>
+                </div>
+            </div>
+            
+            <!-- Progress Bar Section -->
+            <div class="px-6 py-4 border-b border-gray-800">
+                <div class="flex justify-between mb-2 text-xs">
+                    <span class="text-gray-400">Progress</span>
+                    <span class="text-gray-300" id="progressText">0/33</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <!-- Preset Buttons -->
+            <div class="p-4 grid grid-cols-3 gap-3">
+                <button class="preset-btn custom-btn bg-gray-800 hover:bg-gray-700 py-2 rounded-lg text-green-400 text-sm font-medium transition" data-target="33">33</button>
+                <button class="preset-btn custom-btn bg-gray-800 hover:bg-gray-700 py-2 rounded-lg text-green-400 text-sm font-medium transition" data-target="99">99</button>
+                <button class="preset-btn custom-btn bg-gray-800 hover:bg-gray-700 py-2 rounded-lg text-green-400 text-sm font-medium transition" data-target="100">100</button>
+            </div>
+        </div>
+        
+        <!-- 3D Beads Section -->
+        <div class="glass-card">
+            <div class="beads-container" id="beadsContainer">
+                <div class="thread"></div>
+                <div class="beads-wrapper" id="beadsWrapper"></div>
+            </div>
+        </div>
+        
+        <!-- Control Buttons Section -->
+        <div class="glass-card p-4 flex justify-between items-center">
+            <button id="countBtn" class="custom-btn bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-6 rounded-lg shadow-lg transition focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50">
+                Count +1
+            </button>
+            <button id="resetBtn" class="custom-btn bg-gray-800 hover:bg-gray-700 text-white font-medium py-3 px-5 rounded-lg shadow-md transition focus:outline-none focus:ring-2 focus:ring-gray-700 focus:ring-opacity-50">
+                Reset
+            </button>
+        </div>
+        
+        <!-- Dhikr Selection Section -->
+        <div class="glass-card p-4">
+            <label class="text-sm font-medium text-gray-300 block mb-2">Dhikr:</label>
+            <div class="custom-select" id="dhikrSelect">
+                <div class="custom-select-header">
+                    <span id="selectedDhikr">SubhanAllah (Glory be to Allah)</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" class="text-green-400">
+                        <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
+                    </svg>
+                </div>
+                <div class="custom-select-options">
+                    <div class="custom-select-option" data-value="SubhanAllah" data-meaning="Glory be to Allah">SubhanAllah (Glory be to Allah)</div>
+                    <div class="custom-select-option" data-value="Alhamdulillah" data-meaning="All praise is due to Allah">Alhamdulillah (All praise is due to Allah)</div>
+                    <div class="custom-select-option" data-value="AllahuAkbar" data-meaning="Allah is the Greatest">Allahu Akbar (Allah is the Greatest)</div>
+                    <div class="custom-select-option" data-value="LailahaIllAllah" data-meaning="There is no god but Allah">La ilaha illallah (There is no god but Allah)</div>
+                    <div class="custom-select-option" data-value="Astaghfirullah" data-meaning="I seek forgiveness from Allah">Astaghfirullah (I seek forgiveness from Allah)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize variables
+            let count = 0;
+            let target = 33; // Default target
+            let currentActive = 0;
+            let beadElements = [];
+            let isDragging = false;
+            let startY = 0;
+            let currentY = 0;
+            let beadSpacing = 70; // Spacing between beads
+            
+            // DOM elements
+            const counterElement = document.getElementById('counter');
+            const beadsWrapper = document.getElementById('beadsWrapper');
+            const countBtn = document.getElementById('countBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const dhikrSelect = document.getElementById('dhikrSelect');
+            const selectedDhikr = document.getElementById('selectedDhikr');
+            const dhikrDisplay = document.getElementById('dhikrDisplay');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            const presetButtons = document.querySelectorAll('.preset-btn');
+            
+            // Create 3D beads
+            function createBeads(num) {
+                beadsWrapper.innerHTML = '';
+                beadElements = [];
+                
+                // Calculate initial position to center the active bead
+                let initialOffset = (num / 2) * beadSpacing;
+                
+                for (let i = 0; i < num; i++) {
+                    const bead = document.createElement('div');
+                    bead.className = 'bead';
+                    bead.dataset.index = i;
+                    
+                    // Create inner bead for 3D effect
+                    const beadInner = document.createElement('div');
+                    beadInner.className = 'bead-inner';
+                    
+                    // Add shine effect
+                    const beadShine = document.createElement('div');
+                    beadShine.className = 'bead-shine';
+                    
+                    // Add number
+                    const beadNumber = document.createElement('div');
+                    beadNumber.className = 'relative z-10';
+                    beadNumber.textContent = (i + 1);
+                    
+                    beadInner.appendChild(beadShine);
+                    bead.appendChild(beadInner);
+                    bead.appendChild(beadNumber);
+                    
+                    // Position the bead vertically
+                    const yPos = i * beadSpacing - initialOffset;
+                    positionBead(bead, yPos);
+                    
+                    beadsWrapper.appendChild(bead);
+                    beadElements.push(bead);
+                }
+                
+                // Center the beads initially
+                updateBeadsPosition(0);
+            }
+            
+            // Position a single bead with 3D effect
+            function positionBead(bead, yPos) {
+                // Calculate the 3D positions and scaling
+                const z = Math.abs(yPos) * 0.8; // Z distance - further from center = further back
+                const scale = Math.max(0.7, 1 - Math.abs(yPos) * 0.001); // Smaller as it moves away
+                const opacity = Math.max(0.6, 1 - Math.abs(yPos) * 0.001); // More transparent as it moves away
+                
+                bead.style.transform = `translateY(${yPos}px) translateZ(${-z}px) scale(${scale})`;
+                bead.style.opacity = opacity;
+            }
+            
+            // Update all beads positions
+            function updateBeadsPosition(offsetY) {
+                beadElements.forEach((bead, index) => {
+                    // Calculate base position
+                    const baseY = (index * beadSpacing) - (currentActive * beadSpacing);
+                    positionBead(bead, baseY + offsetY);
+                    
+                    // Remove all special classes
+                    bead.classList.remove('active');
+                    
+                    // Apply counted effect to previous beads
+                    if (index < count) {
+                        bead.classList.add('counted');
+                    } else {
+                        bead.classList.remove('counted');
+                    }
+                });
+                
+                // Add active class to the current bead
+                if (beadElements[currentActive]) {
+                    beadElements[currentActive].classList.add('active');
+                }
+            }
+            
+            // Handle the dragging of beads
+            function initDragEvents() {
+                beadsWrapper.addEventListener('mousedown', startDrag);
+                beadsWrapper.addEventListener('touchstart', startDrag, { passive: true });
+                
+                document.addEventListener('mousemove', drag);
+                document.addEventListener('touchmove', drag, { passive: false });
+                
+                document.addEventListener('mouseup', endDrag);
+                document.addEventListener('touchend', endDrag);
+                
+                // Prevent default touchmove to avoid page scrolling
+                document.addEventListener('touchmove', function(e) {
+                    if (isDragging) {
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+            }
+            
+            function startDrag(e) {
+                isDragging = true;
+                startY = e.clientY || e.touches[0].clientY;
+                currentY = startY;
+                
+                beadsWrapper.style.transition = 'none';
+                beadsWrapper.classList.add('grabbing');
+                
+                // Get current translateY
+                const transform = window.getComputedStyle(beadsWrapper).transform;
+                if (transform && transform !== 'none') {
+                    const values = transform.split('(')[1].split(')')[0].split(',');
+                    if (values.length >= 6) {
+                        // Extract translateY value (index 5 in 3D transform matrix)
+                        const currentTranslateY = parseFloat(values[5]);
+                        if (!isNaN(currentTranslateY)) {
+                            currentY = currentTranslateY;
+                        }
+                    }
+                }
+            }
+            
+            function drag(e) {
+                if (!isDragging) return;
+                
+                const clientY = e.clientY || (e.touches ? e.touches[0].clientY : startY);
+                const deltaY = clientY - startY;
+                
+                // Update positions with the drag offset
+                updateBeadsPosition(deltaY);
+                
+                // Determine if we should move to the next/prev bead
+                if (Math.abs(deltaY) > beadSpacing / 2) {
+                    const direction = deltaY > 0 ? -1 : 1;
+                    const newActive = Math.max(0, Math.min(target - 1, currentActive + direction));
+                    
+                    if (newActive !== currentActive) {
+                        currentActive = newActive;
+                        startY = clientY;
+                        
+                        // Update count based on active bead
+                        count = currentActive + 1;
+                        updateCounter();
+                    }
+                }
+            }
+            
+            function endDrag() {
+                if (!isDragging) return;
+                isDragging = false;
+                
+                beadsWrapper.style.transition = 'transform 0.3s ease-out';
+                beadsWrapper.classList.remove('grabbing');
+                
+                // Snap to the current active bead
+                updateBeadsPosition(0);
+            }
+            
+            // Update counter and progress
+            function updateCounter() {
+                counterElement.textContent = count;
+                counterElement.classList.add('pulse-animation');
+                setTimeout(() => {
+                    counterElement.classList.remove('pulse-animation');
+                }, 500);
+                
+                // Update progress bar
+                const percentage = (count / target) * 100;
+                progressBar.style.width = `${Math.min(percentage, 100)}%`;
+                progressText.textContent = `${count}/${target}`;
+                
+                // Check if target reached
+                if (count === target) {
+                    counterElement.classList.add('text-green-300');
+                    setTimeout(() => {
+                        counterElement.classList.remove('text-green-300');
+                    }, 2000);
+                }
+            }
+            
+            // Reset counter
+            function resetCounter() {
+                count = 0;
+                currentActive = 0;
+                updateCounter();
+                updateBeadsPosition(0);
+            }
+            
+            // Increment counter
+            function incrementCounter() {
+                if (count < target) {
+                    count++;
+                    currentActive = count - 1;
+                    updateCounter();
+                    updateBeadsPosition(0);
+                }
+            }
+            
+            // Button event listeners
+            countBtn.addEventListener('click', incrementCounter);
+            resetBtn.addEventListener('click', resetCounter);
+            
+            // Target preset buttons
+            presetButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    target = parseInt(this.dataset.target);
+                    createBeads(target);
+                    resetCounter();
+                    progressText.textContent = `${count}/${target}`;
+                    
+                    // Highlight the active button
+                    presetButtons.forEach(btn => btn.classList.remove('bg-green-800'));
+                    this.classList.add('bg-green-800');
+                });
+            });
+            
+            // Custom dropdown
+            const selectHeader = dhikrSelect.querySelector('.custom-select-header');
+            const selectOptions = dhikrSelect.querySelectorAll('.custom-select-option');
+            
+            selectHeader.addEventListener('click', function() {
+                dhikrSelect.classList.toggle('open');
+            });
+            
+            selectOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    const value = this.dataset.value;
+                    const text = this.textContent;
+                    
+                    // Update the header text
+                    selectedDhikr.textContent = text;
+                    
+                    // Update the display
+                    dhikrDisplay.textContent = value;
+                    
+                    // Close the dropdown
+                    dhikrSelect.classList.remove('open');
+                });
+            });
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!dhikrSelect.contains(e.target)) {
+                    dhikrSelect.classList.remove('open');
+                }
+            });
+            
+            // Initialize
+            createBeads(target);
+            initDragEvents();
+            updateCounter();
+            
+            // Set the first preset as active
+            presetButtons[0].classList.add('bg-green-800');
+        });
+    </script>
+</body>
+</html>
